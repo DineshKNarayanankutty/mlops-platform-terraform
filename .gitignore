@@ -5,6 +5,7 @@
 crash.log
 
 # Ignore plan files
+*tfplan
 *.tfplan
 
 # Ignore override files
