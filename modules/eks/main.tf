@@ -10,20 +10,19 @@ module "eks" {
 
   enable_irsa = true
 
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = false
+
   eks_managed_node_groups = {
     default = {
-      instance_types = ["t3.medium"]
+      instance_types = [var.node_instance_type]
 
-      ami_type = "AL2023_x86_64_STANDARD"
+      ami_type      = "AL2023_x86_64_STANDARD"
+      capacity_type = "ON_DEMAND"
 
       min_size     = 1
       max_size     = 2
       desired_size = 1
     }
-  }
-
-  tags = {
-    Environment = "prod"
-    Project     = "mlops-platform"
   }
 }
