@@ -11,3 +11,8 @@ module "eks" {
   node_instance_type  = "t3.medium"
 }
 
+module "ecr" {
+  source = "../../modules/ecr"
+
+  repository_name = "mlops-dev-inference"
+}
