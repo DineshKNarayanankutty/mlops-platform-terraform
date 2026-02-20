@@ -11,5 +11,16 @@ variable "private_subnets" {
 }
 
 variable "node_instance_type" {
-  type = string
+  type    = string
+  default = "t3.medium"
+}
+
+variable "cluster_endpoint_public_access" {
+  type    = bool
+  default = true
+}
+
+variable "cluster_endpoint_private_access" {
+  type    = bool
+  default = true
 }
