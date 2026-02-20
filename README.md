@@ -1,185 +1,298 @@
-# 🚀 Production-Ready MLOps Platform on AWS (Terraform + EKS)
+# 🚀 Enterprise-Grade MLOps Platform on AWS
 
-This repository contains Infrastructure as Code (IaC) for a production-style MLOps platform built on AWS using Terraform.
+### Terraform + EKS + Multi-Environment Architecture
 
-The goal of this project is to simulate a real-world, enterprise-grade MLOps infrastructure setup with modular Terraform design, remote state management, and CI/CD readiness.
+This repository contains Infrastructure as Code (IaC) for a production-style, multi-environment MLOps platform built on AWS using Terraform.
 
----
+The objective is to simulate a real-world enterprise cloud platform setup with:
 
-## 🏗 Architecture Overview
-
-The platform is designed with production best practices:
-
-- VPC with public and private subnets (Multi-AZ)
-- NAT Gateway for outbound internet access
-- Amazon EKS cluster (Kubernetes)
-- S3 for Terraform remote state
-- DynamoDB for state locking
-- Modular Terraform structure
-- Environment isolation (dev/prod ready)
-
-High-level components:
-
-- Networking (VPC, Subnets, Route Tables)
-- Kubernetes (EKS)
-- Artifact Storage (S3)
-- Container Registry (ECR)
-- IAM Roles & Policies
-- CI/CD Integration (GitHub Actions – planned)
+* Strict environment isolation (dev / stage / prod)
+* Modular Terraform architecture
+* Remote state management
+* Production-ready EKS clusters
+* Secure container and artifact storage
+* CI/CD-ready structure
 
 ---
 
-## 📁 Project Structure
+# 🏗 Architecture Overview
+
+Each environment (dev, stage, prod) provisions its own:
+
+* VPC (isolated CIDR range)
+* Public & Private Subnets (Multi-AZ)
+* NAT Gateway
+* Amazon EKS Cluster (Kubernetes 1.35)
+* Managed Node Group (AL2023)
+* Amazon ECR Repository
+* Amazon S3 Bucket (ML artifacts)
+* Remote Terraform State (S3 backend with lockfile)
+
+This simulates a real enterprise landing zone inside a single AWS account.
+
+---
+
+# 🌐 Environment Isolation Strategy
+
+Each environment has:
+
+| Environment | VPC CIDR    | State Key               | Cluster Name        |
+| ----------- | ----------- | ----------------------- | ------------------- |
+| DEV         | 10.0.0.0/16 | dev/terraform.tfstate   | mlops-dev-cluster   |
+| STAGE       | 10.1.0.0/16 | stage/terraform.tfstate | mlops-stage-cluster |
+| PROD        | 10.2.0.0/16 | prod/terraform.tfstate  | mlops-prod-cluster  |
+
+Isolation is achieved through:
+
+* Separate state files
+* Separate VPCs
+* Separate ECR repositories
+* Separate S3 artifact buckets
+* Environment-specific tagging
+
+---
+
+# 📁 Project Structure
 
 ```
-
 mlops-platform/
 │
 ├── modules/
-│   └── vpc/                # Reusable VPC module
+│   ├── vpc/                # Reusable VPC module (environment-aware)
+│   ├── eks/                # EKS wrapper module
+│   ├── ecr/                # Container registry module
+│   └── s3/                 # Artifact storage module
 │
 ├── environments/
-│   └── prod/               # Production environment root module
+│   ├── dev/
+│   ├── stage/
+│   └── prod/
+│       ├── backend.tf
 │       ├── main.tf
 │       ├── provider.tf
-│       ├── versions.tf
 │       ├── variables.tf
-│       └── backend.tf
+│       ├── versions.tf
+│       └── terraform.tfvars
 │
 └── .gitignore
-
-````
+```
 
 ---
 
-## 🔐 Remote State Management
+# 🔐 Remote State Management
 
 Terraform state is stored remotely using:
 
-- Amazon S3 (state storage)
-- DynamoDB (state locking)
+* Amazon S3
+* `use_lockfile = true` (modern locking mechanism)
 
-This prevents:
-- State corruption
-- Concurrent apply issues
-- Local state dependency risks
+Each environment has its own state key:
 
-State file is NOT stored in this repository.
+```
+dev/terraform.tfstate
+stage/terraform.tfstate
+prod/terraform.tfstate
+```
+
+Benefits:
+
+* State isolation
+* Safe parallel applies
+* No local state dependency
+* Reduced risk of corruption
+
+DynamoDB is intentionally not used (modern S3 lockfile approach).
 
 ---
 
-## ⚙️ Prerequisites
+# ☸ Kubernetes Configuration
 
-- AWS Account
-- IAM User with sufficient permissions
-- AWS CLI configured
-- Terraform >= 1.6
-- Git
+EKS Configuration:
+
+* Kubernetes Version: 1.35
+* Managed Node Groups
+* AMI: AL2023_x86_64_STANDARD
+* Capacity Type: ON_DEMAND
+* IRSA enabled
+* Private subnets for worker nodes
+* Environment-based scaling
+
+Production hardening includes:
+
+* Environment-specific node sizing
+* CIDR separation
+* Strict tagging strategy
 
 ---
 
-## 🔑 Authentication
+# 📦 Platform Components
 
-Terraform uses AWS CLI credentials configured locally:
+## 🌐 Networking
+
+* Dedicated VPC per environment
+* Multi-AZ public & private subnets
+* Internet Gateway
+* NAT Gateway
+* Route tables per subnet tier
+
+## ☸ Kubernetes
+
+* Amazon EKS (Managed Control Plane)
+* Managed Node Groups
+* IRSA enabled
+
+## 📦 Container Registry
+
+* Amazon ECR
+* Image scanning enabled
+* Immutable tags
+* Lifecycle policies
+
+## 🗂 Artifact Storage
+
+* Amazon S3
+* Versioning enabled
+* Server-side encryption
+* Public access blocked
+
+---
+
+# ⚙️ Prerequisites
+
+* AWS Account
+* IAM user or role with sufficient permissions
+* AWS CLI configured
+* Terraform >= 1.4
+* kubectl
+* Git
+
+---
+
+# 🔑 Authentication
+
+Configure AWS credentials locally:
 
 ```bash
 aws configure
-````
+```
 
 No credentials are stored in this repository.
 
 ---
 
-## 🚀 Deployment Steps
+# 🚀 Deployment Steps
 
-### 1️⃣ Navigate to Environment
-
-```bash
-cd environments/prod
-```
-
-### 2️⃣ Initialize Terraform
+## Deploy DEV
 
 ```bash
+cd environments/dev
 terraform init
-```
-
-### 3️⃣ Review Execution Plan
-
-```bash
 terraform plan
-```
-
-### 4️⃣ Apply Infrastructure
-
-```bash
 terraform apply
 ```
 
-### 5️⃣ Destroy (When Not In Use)
+## Deploy STAGE
+
+```bash
+cd environments/stage
+terraform init
+terraform plan
+terraform apply
+```
+
+## Deploy PROD
+
+```bash
+cd environments/prod
+terraform init
+terraform plan
+terraform apply
+```
+
+---
+
+# 🔥 Destroy When Not In Use
 
 ```bash
 terraform destroy
 ```
 
+⚠️ Always destroy non-production environments to avoid unnecessary costs.
+
 ---
 
-## 💰 Cost Considerations
+# 💰 Cost Considerations
 
-This infrastructure provisions:
+Each environment provisions:
 
-* NAT Gateway (billable resource)
+* EKS control plane (billable)
+* NAT Gateway (billable)
+* EC2 instances (node groups)
 * Elastic IP
-* Future EKS cluster (billable)
+* CloudWatch logs
 
-⚠️ Always run `terraform destroy` when not actively using the environment.
+Running all environments simultaneously will incur costs.
+
+Recommended practice:
+
+* Keep DEV active
+* Destroy STAGE when not needed
+* Apply PROD only when required
 
 ---
 
-## 🧠 Design Principles
+# 🧠 Design Principles
 
 * Modular Terraform architecture
-* Environment isolation
+* Explicit module contracts
+* Strict environment isolation
 * Provider version pinning
 * Remote backend with locking
-* Infrastructure reproducibility
-* Production-style network segmentation
+* Production-style networking
+* No hardcoded shared infrastructure
+* Reusable environment-aware modules
 
 ---
 
-## 🔒 Security Practices
+# 🔒 Security Practices
 
-* No AWS credentials stored in repo
-* `.terraform` directory ignored
-* `terraform.tfstate` ignored
-* Remote state encrypted in S3
-* Public access blocked for state bucket
+* No credentials in repository
+* `.terraform` ignored
+* State file not committed
+* S3 state encryption
+* Public access blocked for artifact buckets
+* IRSA enabled (no static AWS keys in pods)
+* Environment-specific resource naming
 
 ---
 
-## 📈 Future Enhancements
+# 📈 Next Roadmap (Platform Maturity)
 
-* Amazon EKS cluster provisioning
-* IAM Roles for Service Accounts (IRSA)
-* S3 for ML artifacts
-* ECR for container images
-* GitHub Actions CI/CD pipeline
+Planned enhancements:
+
+* EKS control plane logging
+* Metrics server
+* Horizontal Pod Autoscaler
+* Karpenter (node autoscaling)
+* AWS Load Balancer Controller
+* Ingress-based routing
+* CI/CD (GitHub Actions)
 * Monitoring stack (Prometheus + Grafana)
-* Multi-environment support (dev/staging/prod)
 * Cost optimization improvements
 
 ---
 
-## 🎯 Objective
+# 🎯 Objective
 
-This project is built to:
+This project demonstrates:
 
-* Demonstrate production-ready Terraform practices
-* Simulate real enterprise MLOps infrastructure
-* Serve as a learning and portfolio project
+* Enterprise-grade Terraform practices
+* Multi-environment AWS architecture
+* Production-style Kubernetes platform setup
+* Secure MLOps-ready infrastructure
+* Infrastructure automation best practices
 
----
+Built as both:
 
-## 📜 License
-
-This project is for educational and demonstration purposes.
+* A learning platform
+* A portfolio-ready cloud engineering project
