@@ -1,16 +1,21 @@
 resource "aws_vpc" "main" {
-  cidr_block = var.vpc_cidr
+  cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name = "mlops-vpc"
+    Name        = "mlops-${var.environment}-vpc"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
 data "aws_availability_zones" "available" {}
 
+# -------------------------
 # Public Subnets
+# -------------------------
+
 resource "aws_subnet" "public" {
   count = length(var.public_subnet_cidrs)
 
@@ -20,11 +25,15 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "mlops-public-${count.index}"
+    Name        = "mlops-${var.environment}-public-${count.index}"
+    Environment = var.environment
   }
 }
 
+# -------------------------
 # Private Subnets
+# -------------------------
+
 resource "aws_subnet" "private" {
   count = length(var.private_subnet_cidrs)
 
@@ -33,29 +42,53 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name = "mlops-private-${count.index}"
+    Name        = "mlops-${var.environment}-private-${count.index}"
+    Environment = var.environment
   }
 }
 
+# -------------------------
 # Internet Gateway
+# -------------------------
+
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "mlops-${var.environment}-igw"
+    Environment = var.environment
+  }
 }
 
-# Elastic IP for NAT
+# -------------------------
+# NAT Gateway (Single AZ)
+# -------------------------
+
 resource "aws_eip" "nat" {
   domain = "vpc"
 }
 
-# NAT Gateway
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name        = "mlops-${var.environment}-nat"
+    Environment = var.environment
+  }
 }
 
+# -------------------------
 # Public Route Table
+# -------------------------
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "mlops-${var.environment}-public-rt"
+    Environment = var.environment
+  }
 }
 
 resource "aws_route" "public_internet_access" {
@@ -71,9 +104,17 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# -------------------------
 # Private Route Table
+# -------------------------
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "mlops-${var.environment}-private-rt"
+    Environment = var.environment
+  }
 }
 
 resource "aws_route" "private_nat_access" {
