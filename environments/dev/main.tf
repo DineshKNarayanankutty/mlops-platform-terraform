@@ -16,3 +16,8 @@ module "ecr" {
 
   repository_name = "mlops-dev-inference"
 }
+
+module "s3" {
+  source      = "../../modules/s3"
+  bucket_name = "mlops-dev-artifacts-bucket777"
+}
